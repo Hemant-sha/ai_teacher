@@ -20,52 +20,53 @@ app.post('/api/init-assistant', async (req, res) => {
       model: "gpt-4o",
       tools: [
         { type: "code_interpreter" },
+        { type: "file_search" },
        // { type: "retrieval" },
        // "error": "400 Invalid value: 'retrieval'. Supported values are: 'code_interpreter', 'function', and 'file_search'."
-        {
-          type: "function",
-          function: {
-            name: "get_question_hint",
-            description: "Get a hint or explanation from the tutor's hint API.",
-            parameters: {
-              type: "object",
-              properties: {
-                questionId: { type: "string", description: "ID of the question" },
-                userLevel: { type: "string", enum: ["easy", "medium", "hard"] }
-              },
-              required: ["questionId"]
-            }
-          }
-        },
-        {
-          type: "function",
-          function: {
-            name: "explain_topic",
-            description: "Call the topic explanation API to explain a concept.",
-            parameters: {
-              type: "object",
-              properties: {
-                topic: { type: "string", description: "Topic or concept to explain" }
-              },
-              required: ["topic"]
-            }
-          }
-        },
-        {
-          type: "function",
-          function: {
-            name: "grade_answer",
-            description: "Call the grading API to check a student's answer.",
-            parameters: {
-              type: "object",
-              properties: {
-                questionId: { type: "string" },
-                answer: { type: "string" }
-              },
-              required: ["questionId", "answer"]
-            }
-          }
-        }
+        // {
+        //   type: "function",
+        //   function: {
+        //     name: "get_question_hint",
+        //     description: "Get a hint or explanation from the tutor's hint API.",
+        //     parameters: {
+        //       type: "object",
+        //       properties: {
+        //         questionId: { type: "string", description: "ID of the question" },
+        //         userLevel: { type: "string", enum: ["easy", "medium", "hard"] }
+        //       },
+        //       required: ["questionId"]
+        //     }
+        //   }
+        // },
+        // {
+        //   type: "function",
+        //   function: {
+        //     name: "explain_topic",
+        //     description: "Call the topic explanation API to explain a concept.",
+        //     parameters: {
+        //       type: "object",
+        //       properties: {
+        //         topic: { type: "string", description: "Topic or concept to explain" }
+        //       },
+        //       required: ["topic"]
+        //     }
+        //   }
+        // },
+        // {
+        //   type: "function",
+        //   function: {
+        //     name: "grade_answer",
+        //     description: "Call the grading API to check a student's answer.",
+        //     parameters: {
+        //       type: "object",
+        //       properties: {
+        //         questionId: { type: "string" },
+        //         answer: { type: "string" }
+        //       },
+        //       required: ["questionId", "answer"]
+        //     }
+        //   }
+        // }
       ]
     });
     res.json({ assistantId: assistant.id });
@@ -263,7 +264,6 @@ app.post('/api/ask', async (req, res) => {
     let runStatus;
     do {
       await new Promise(r => setTimeout(r, 1000));
-
       const statusResponse = await fetch(`https://api.openai.com/v1/threads/${threadId}/runs/${runId}`, {
         headers: {
           "Authorization": `Bearer ${config.openai_api_key}`,
@@ -273,7 +273,7 @@ app.post('/api/ask', async (req, res) => {
 
       runStatus = await statusResponse.json();
       if (!statusResponse.ok) throw new Error(runStatus.error?.message || 'Error checking run status');
-      console.log("runStatus", runStatus);
+      console.log("runStatus", runStatus.status);
       // STEP 4: Handle tool calls if needed
       // if (runStatus.status === 'requires_action') {
       //   const toolCalls = runStatus.required_action.submit_tool_outputs.tool_calls;
@@ -323,7 +323,7 @@ app.post('/api/ask', async (req, res) => {
       //   if (!submitResp.ok) throw new Error(submitData.error?.message || 'Failed to submit tool outputs');
       // }
 
-    } while (runStatus.status !== 'completed' && runStatus.status !== 'failed');
+   } while (runStatus.status !== 'completed' && runStatus.status !== 'failed');
     console.log("i am here 2");
     // STEP 5: Get assistant reply
     const msgResponse = await fetch(`https://api.openai.com/v1/threads/${threadId}/messages`, {
