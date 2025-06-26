@@ -53,6 +53,20 @@
   </div>
 
   <script>
+    // declare all characters
+const characters ='ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+
+function generateString(length) {
+    let result = ' ';
+    const charactersLength = characters.length;
+    for ( let i = 0; i < length; i++ ) {
+        result += characters.charAt(Math.floor(Math.random() * charactersLength));
+    }
+
+    return result;
+}
+
+
     let assistantId;
     let threadId;
     // 1. INIT assistant on page load
@@ -67,7 +81,7 @@
       const res = await fetch('/api/start-session', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userId: Date.now() })
+        body: JSON.stringify({ userId: generateString(10) })
       });
 
       const data = await res.json();
