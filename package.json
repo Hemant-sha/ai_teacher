@@ -4,12 +4,7 @@
   "main": " index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "start": "nodemon index.js",
-    "dev": "nodemon index.js",
-    "db:sync": "node db-sync.js",
-    "db:init": "node scripts/init-db.js",
-    "db:reset": "node scripts/init-db.js force",
-    "db:alter": "node scripts/init-db.js alter"
+    "start": "nodemon index.js"
   },
   "keywords": [],
   "author": "",

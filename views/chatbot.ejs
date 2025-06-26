@@ -1,17 +1,48 @@
 <!DOCTYPE html>
 <html>
+
 <head>
   <title>Chatbot</title>
   <style>
-    body { font-family: Arial; background: #f4f4f4; }
-    #chatbox { width: 500px; margin: 50px auto; background: white; padding: 20px; border-radius: 10px; box-shadow: 0 0 10px #aaa; }
-    .message { margin: 10px 0; }
-    .user { text-align: right; color: blue; }
-    .bot { text-align: left; color: green; }
-    input { width: 80%; padding: 10px; }
-    button { padding: 10px; }
+    body {
+      font-family: Arial;
+      background: #f4f4f4;
+    }
+
+    #chatbox {
+      width: 500px;
+      margin: 50px auto;
+      background: white;
+      padding: 20px;
+      border-radius: 10px;
+      box-shadow: 0 0 10px #aaa;
+    }
+
+    .message {
+      margin: 10px 0;
+    }
+
+    .user {
+      text-align: right;
+      color: blue;
+    }
+
+    .bot {
+      text-align: left;
+      color: green;
+    }
+
+    input {
+      width: 80%;
+      padding: 10px;
+    }
+
+    button {
+      padding: 10px;
+    }
   </style>
 </head>
+
 <body>
   <div id="chatbox">
     <div id="messages"></div>
@@ -22,25 +53,58 @@
   </div>
 
   <script>
-    const form = document.getElementById('chat-form');
-    const input = document.getElementById('input');
-    const messages = document.getElementById('messages');
+    let assistantId;
+    let threadId;
+    // 1. INIT assistant on page load
+    async function initAssistant() {
+      let res = await fetch('/api/init-assistant', { method: 'POST' });
+      const data = await res.json();
+      assistantId = data.assistantId;
+    }
 
-    form.addEventListener('submit', async (e) => {
-      e.preventDefault();
-      const userMessage = input.value;
-      messages.innerHTML += `<div class="message user">${userMessage}</div>`;
-      input.value = '';
-
-      const res = await fetch('/chat', {
+    // 2. Start new session (get session ID)
+    async function startSession() {
+      const res = await fetch('/api/start-session', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message: userMessage })
+        body: JSON.stringify({ userId: "123" })
       });
 
       const data = await res.json();
-      messages.innerHTML += `<div class="message bot">${data.reply}</div>`;
+      threadId = data.threadId; // assume backend returns { threadId: "thread_KvFUGkKA1z7a5b5GlstanQcb" }
+    }
+
+    // UI interaction
+    document.addEventListener('DOMContentLoaded', async () => {
+      await initAssistant();
+      await startSession();
+
+      document.getElementById('chat-form').addEventListener('submit', async (e) => {
+
+        const input = document.getElementById('input');
+        const messages = document.getElementById('messages');
+
+        e.preventDefault();
+        const userMessage = input.value;
+        messages.innerHTML += `<div class="message user">${userMessage}</div>`;
+        input.value = '';
+
+        const res = await fetch('/api/ask', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            assistantId: assistantId,
+            question: userMessage,
+            threadId: threadId
+          })
+        });
+
+        const data = await res.json();
+        messages.innerHTML += `<div class="message bot">${data.reply}</div>`;
+      });
     });
+
   </script>
 </body>
+
 </html>
