@@ -253,7 +253,6 @@ app.post('/api/ask', async (req, res) => {
         assistant_id: assistantId
       })
     });
-    console.log("i am here 1");
 
     const runData = await runResponse.json();
     if (!runResponse.ok) throw new Error(runData.error?.message || 'Failed to start assistant run');
@@ -324,7 +323,6 @@ app.post('/api/ask', async (req, res) => {
       // }
 
    } while (runStatus.status !== 'completed' && runStatus.status !== 'failed');
-    console.log("i am here 2");
     // STEP 5: Get assistant reply
     const msgResponse = await fetch(`https://api.openai.com/v1/threads/${threadId}/messages`, {
       headers: {
