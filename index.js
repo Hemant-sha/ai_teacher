@@ -7,7 +7,7 @@ import db from "./models/index.js";
 
 // App and OpenAI init
 const app = express();
-app.use(express.json());
+app.use(express.json()); 
 app.set("view engine", "ejs");
 const openai = new OpenAI({ apiKey: config.openai_api_key });
 
