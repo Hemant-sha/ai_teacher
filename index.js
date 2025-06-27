@@ -7,7 +7,7 @@ import db from "./models/index.js";
 
 // App and OpenAI init
 const app = express();
-app.use(express.json()); 
+app.use(express.json());
 app.set("view engine", "ejs");
 const openai = new OpenAI({ apiKey: config.openai_api_key });
 
@@ -21,8 +21,8 @@ app.post('/api/init-assistant', async (req, res) => {
       tools: [
         { type: "code_interpreter" },
         { type: "file_search" },
-       // { type: "retrieval" },
-       // "error": "400 Invalid value: 'retrieval'. Supported values are: 'code_interpreter', 'function', and 'file_search'."
+        // { type: "retrieval" },
+        // "error": "400 Invalid value: 'retrieval'. Supported values are: 'code_interpreter', 'function', and 'file_search'."
         // {
         //   type: "function",
         //   function: {
@@ -80,12 +80,12 @@ app.post('/api/start-session', async (req, res) => {
   const { userId } = req.body;
   try {
     // Check if user already has a thread
-    const existingUserThread = await db.UserThread.findOne({
-      where: { user_id: userId }
-    });
-    if (existingUserThread) {
-      return res.json({ threadId: existingUserThread.thread_id });
-    }
+    // const existingUserThread = await db.UserThread.findOne({
+    //   where: { user_id: userId }
+    // });
+    // if (existingUserThread) {
+    //   return res.json({ threadId: existingUserThread.thread_id });
+    // }
 
     // Create new OpenAI thread
     const thread = await openai.beta.threads.create({
@@ -121,7 +121,7 @@ app.post('/api/start-session', async (req, res) => {
 //     if (!userThread) {
 //       return res.status(404).json({ error: 'Session not found' });
 //     }
-    
+
 //    // const threadId = userThread.get('thread_id');
 //     console.log("type of userThread", typeof threadId);
 //     console.log("this is the thread id", threadId);
@@ -147,10 +147,10 @@ app.post('/api/start-session', async (req, res) => {
 //         content: question
 //       })
 //     });
-    
+
 //     const data = await response.json();
 //     console.log(data);
-    
+
 
 //     console.log("i am here");
 
@@ -224,6 +224,7 @@ app.post('/api/ask', async (req, res) => {
       return res.status(400).json({ error: 'Missing required fields.' });
     }
 
+    //Create message or Represents a message within a thread.
     // STEP 1: Add user message to thread
     const messageResponse = await fetch(`https://api.openai.com/v1/threads/${threadId}/messages`, {
       method: "POST",
@@ -241,6 +242,27 @@ app.post('/api/ask', async (req, res) => {
     const messageData = await messageResponse.json();
     if (!messageResponse.ok) throw new Error(messageData.error?.message || 'Failed to send message');
 
+    //update when title is empty
+    const existingUserThread = await db.UserThread.findOne({
+      where: {
+        user_id: userId,
+        thread_id: threadId
+      }
+    });
+    if (!existingUserThread.title) {
+      await db.UserThread.update({
+        title: question
+      }, {
+        where: {
+          user_id: userId,
+          thread_id: threadId
+        }
+      });
+    }
+
+
+    //Represents an execution run on a thread.
+    //Create a run
     // STEP 2: Run assistant
     const runResponse = await fetch(`https://api.openai.com/v1/threads/${threadId}/runs`, {
       method: "POST",
@@ -259,6 +281,7 @@ app.post('/api/ask', async (req, res) => {
 
     const runId = runData.id;
 
+    // Modifies a run.
     // STEP 3: Poll run status
     let runStatus;
     do {
@@ -277,37 +300,37 @@ app.post('/api/ask', async (req, res) => {
       // if (runStatus.status === 'requires_action') {
       //   const toolCalls = runStatus.required_action.submit_tool_outputs.tool_calls;
 
-        // const toolOutputs = await Promise.all(toolCalls.map(async (tool) => {
-        //   const args = JSON.parse(tool.function.arguments);
-        //   switch (tool.function.name) {
-        //     case 'get_question_hint':
-        //       const hintResp = await fetch(`${process.env.HINT_API_URL}?questionId=${args.questionId}&userLevel=${args.userLevel || 'medium'}`);
-        //       const hintData = await hintResp.json();
-        //       return { tool_call_id: tool.id, output: hintData.hint || 'No hint available.' };
+      // const toolOutputs = await Promise.all(toolCalls.map(async (tool) => {
+      //   const args = JSON.parse(tool.function.arguments);
+      //   switch (tool.function.name) {
+      //     case 'get_question_hint':
+      //       const hintResp = await fetch(`${process.env.HINT_API_URL}?questionId=${args.questionId}&userLevel=${args.userLevel || 'medium'}`);
+      //       const hintData = await hintResp.json();
+      //       return { tool_call_id: tool.id, output: hintData.hint || 'No hint available.' };
 
-        //     case 'explain_topic':
-        //       const explainResp = await fetch(`${process.env.TOPIC_API_URL}?topic=${encodeURIComponent(args.topic)}`);
-        //       const explainData = await explainResp.json();
-        //       return { tool_call_id: tool.id, output: explainData.explanation || 'No explanation available.' };
+      //     case 'explain_topic':
+      //       const explainResp = await fetch(`${process.env.TOPIC_API_URL}?topic=${encodeURIComponent(args.topic)}`);
+      //       const explainData = await explainResp.json();
+      //       return { tool_call_id: tool.id, output: explainData.explanation || 'No explanation available.' };
 
-        //     case 'grade_answer':
-        //       const gradeResp = await fetch(`${process.env.GRADE_API_URL}`, {
-        //         method: 'POST',
-        //         headers: { 'Content-Type': 'application/json' },
-        //         body: JSON.stringify({
-        //           questionId: args.questionId,
-        //           answer: args.answer
-        //         })
-        //       });
-        //       const gradeData = await gradeResp.json();
-        //       return { tool_call_id: tool.id, output: gradeData.feedback || 'No feedback available.' };
+      //     case 'grade_answer':
+      //       const gradeResp = await fetch(`${process.env.GRADE_API_URL}`, {
+      //         method: 'POST',
+      //         headers: { 'Content-Type': 'application/json' },
+      //         body: JSON.stringify({
+      //           questionId: args.questionId,
+      //           answer: args.answer
+      //         })
+      //       });
+      //       const gradeData = await gradeResp.json();
+      //       return { tool_call_id: tool.id, output: gradeData.feedback || 'No feedback available.' };
 
-        //     default:
-        //       return { tool_call_id: tool.id, output: 'Tool not recognized.' };
-        //   }
-        // }));
+      //     default:
+      //       return { tool_call_id: tool.id, output: 'Tool not recognized.' };
+      //   }
+      // }));
 
-        // Submit tool outputs
+      // Submit tool outputs
       //   const submitResp = await fetch(`https://api.openai.com/v1/threads/${threadId}/runs/${runId}/submit_tool_outputs`, {
       //     method: "POST",
       //     headers: {
@@ -322,7 +345,7 @@ app.post('/api/ask', async (req, res) => {
       //   if (!submitResp.ok) throw new Error(submitData.error?.message || 'Failed to submit tool outputs');
       // }
 
-   } while (runStatus.status !== 'completed' && runStatus.status !== 'failed');
+    } while (runStatus.status !== 'completed' && runStatus.status !== 'failed');
     // STEP 5: Get assistant reply
     const msgResponse = await fetch(`https://api.openai.com/v1/threads/${threadId}/messages`, {
       headers: {
@@ -345,6 +368,29 @@ app.post('/api/ask', async (req, res) => {
   }
 });
 
+/* list of message according to threads */
+app.get("/api/messages/:threadId", async (req, res) => {
+  const { threadId } = req.params;
+  const messageResponse = await fetch(`https://api.openai.com/v1/threads/${threadId}/messages`, {
+    method: "GET",
+    headers: {
+      "Authorization": `Bearer ${config.openai_api_key}`,
+      "Content-Type": "application/json",
+      "OpenAI-Beta": "assistants=v2"
+    },
+  });
+  const messageData = await messageResponse.json();
+  if (!messageResponse.ok) throw new Error(messageData.error?.message || 'Failed to send message');
+  return res.json(messageData).status(200);
+}
+);
+
+/* list of threads */
+app.get("/api/threads", async (req, res) => {
+  let threads = await db.UserThread.findAll({ attributes: ['user_id', 'thread_id', 'title'] });
+  return res.json(threads).status(200);
+}
+);
 
 app.get(
   "/",
@@ -357,25 +403,25 @@ app.get(
 async function initializeApp() {
   try {
     console.log('🔄 Initializing application...');
-    
+
     // Test database connection
     await db.sequelize.authenticate();
     console.log('✅ Database connection established');
-    
+
     // Sync database models (safe mode - only creates missing tables)
-    await db.sequelize.sync({ 
+    await db.sequelize.sync({
       alter: false,  // Don't alter existing tables
       force: false   // Don't drop existing tables
     });
     console.log('✅ Database models synchronized');
-    
+
     // Start server
     const PORT = 3000;
     app.listen(PORT, () => {
       console.log(`🚀 Server running on port ${PORT}`);
       console.log(`📱 Chatbot available at http://localhost:${PORT}`);
     });
-    
+
   } catch (error) {
     console.error('❌ Application initialization failed:', error.message);
     console.error('Please check your database configuration and run the sync script if needed.');
