@@ -23,21 +23,23 @@ app.post('/api/init-assistant', async (req, res) => {
         { type: "file_search" },
         // { type: "retrieval" },
         // "error": "400 Invalid value: 'retrieval'. Supported values are: 'code_interpreter', 'function', and 'file_search'."
-        // {
-        //   type: "function",
-        //   function: {
-        //     name: "get_question_hint",
-        //     description: "Get a hint or explanation from the tutor's hint API.",
-        //     parameters: {
-        //       type: "object",
-        //       properties: {
-        //         questionId: { type: "string", description: "ID of the question" },
-        //         userLevel: { type: "string", enum: ["easy", "medium", "hard"] }
-        //       },
-        //       required: ["questionId"]
-        //     }
-        //   }
-        // },
+        {
+          type: "function",
+          function: {
+            name: "get_course_fee",
+            description: "Returns an array of course fee objects, each with fields like id, name, type, hasSubCategory, SubFeeCategories, etc.",
+            parameters: {
+              type: "object",
+              properties: {
+                courseId: {
+                  type: "string",
+                  description: "ID of the course"
+                }
+              }
+            }
+          }
+        }
+,        
         // {
         //   type: "function",
         //   function: {
@@ -297,53 +299,55 @@ app.post('/api/ask', async (req, res) => {
       if (!statusResponse.ok) throw new Error(runStatus.error?.message || 'Error checking run status');
       console.log("runStatus", runStatus.status);
       // STEP 4: Handle tool calls if needed
-      // if (runStatus.status === 'requires_action') {
-      //   const toolCalls = runStatus.required_action.submit_tool_outputs.tool_calls;
+      if (runStatus.status === 'requires_action') {
+        const toolCalls = runStatus.required_action.submit_tool_outputs.tool_calls;
 
-      // const toolOutputs = await Promise.all(toolCalls.map(async (tool) => {
-      //   const args = JSON.parse(tool.function.arguments);
-      //   switch (tool.function.name) {
-      //     case 'get_question_hint':
-      //       const hintResp = await fetch(`${process.env.HINT_API_URL}?questionId=${args.questionId}&userLevel=${args.userLevel || 'medium'}`);
-      //       const hintData = await hintResp.json();
-      //       return { tool_call_id: tool.id, output: hintData.hint || 'No hint available.' };
+      const toolOutputs = await Promise.all(toolCalls.map(async (tool) => {
+        const args = JSON.parse(tool.function.arguments);
+        switch (tool.function.name) {
+          case 'get_course_fee':
+            const hintResp = await fetch('http://localhost:5000/api/admin/fee-categories');
+            const hintData = await hintResp.json();
+            console.log("hintData", hintData);
+            return { tool_call_id: tool.id, output: hintData.feesByCategory || 'No hint available.' };
 
-      //     case 'explain_topic':
-      //       const explainResp = await fetch(`${process.env.TOPIC_API_URL}?topic=${encodeURIComponent(args.topic)}`);
-      //       const explainData = await explainResp.json();
-      //       return { tool_call_id: tool.id, output: explainData.explanation || 'No explanation available.' };
+          case 'explain_topic':
+            const explainResp = await fetch(`${process.env.TOPIC_API_URL}?topic=${encodeURIComponent(args.topic)}`);
+            const explainData = await explainResp.json();
+            return { tool_call_id: tool.id, output: explainData.explanation || 'No explanation available.' };
 
-      //     case 'grade_answer':
-      //       const gradeResp = await fetch(`${process.env.GRADE_API_URL}`, {
-      //         method: 'POST',
-      //         headers: { 'Content-Type': 'application/json' },
-      //         body: JSON.stringify({
-      //           questionId: args.questionId,
-      //           answer: args.answer
-      //         })
-      //       });
-      //       const gradeData = await gradeResp.json();
-      //       return { tool_call_id: tool.id, output: gradeData.feedback || 'No feedback available.' };
+          case 'grade_answer':
+            const gradeResp = await fetch(`${process.env.GRADE_API_URL}`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                questionId: args.questionId,
+                answer: args.answer
+              })
+            });
+            const gradeData = await gradeResp.json();
+            return { tool_call_id: tool.id, output: gradeData.feedback || 'No feedback available.' };
 
-      //     default:
-      //       return { tool_call_id: tool.id, output: 'Tool not recognized.' };
-      //   }
-      // }));
+          default:
+            return { tool_call_id: tool.id, output: 'Tool not recognized.' };
+        }
+      }));
+      console.log("toolOutputs--->", toolOutputs);
 
-      // Submit tool outputs
-      //   const submitResp = await fetch(`https://api.openai.com/v1/threads/${threadId}/runs/${runId}/submit_tool_outputs`, {
-      //     method: "POST",
-      //     headers: {
-      //       "Authorization": `Bearer ${config.openai_api_key}`,
-      //       "Content-Type": "application/json",
-      //       "OpenAI-Beta": "assistants=v2"
-      //     },
-      //     body: JSON.stringify({ tool_outputs: toolOutputs })
-      //   });
+     // Submit tool outputs
+        const submitResp = await fetch(`https://api.openai.com/v1/threads/${threadId}/runs/${runId}/submit_tool_outputs`, {
+          method: "POST",
+          headers: {
+            "Authorization": `Bearer ${config.openai_api_key}`,
+            "Content-Type": "application/json",
+            "OpenAI-Beta": "assistants=v2"
+          },
+          body: JSON.stringify({ tool_outputs: toolOutputs })
+        });
 
-      //   const submitData = await submitResp.json();
-      //   if (!submitResp.ok) throw new Error(submitData.error?.message || 'Failed to submit tool outputs');
-      // }
+        const submitData = await submitResp.json();
+        if (!submitResp.ok) throw new Error(submitData.error?.message || 'Failed to submit tool outputs');
+      }
 
     } while (runStatus.status !== 'completed' && runStatus.status !== 'failed');
     // STEP 5: Get assistant reply
