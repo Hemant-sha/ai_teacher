@@ -162,6 +162,7 @@
           <div class="typingIndicatorBubbleDot"></div>
         </div>
       </div>
+      <div id="output"></div>
       <form id="chat-form">
         <input type="text" id="input" placeholder="Type a message..." autocomplete="off" />
         <button type="submit">Send</button>
@@ -261,6 +262,57 @@
     });
 
   </script>
+
+<script>
+  // Create a WebSocket instance
+  // and connect to the server
+  const socket = new WebSocket('ws://localhost:3000');
+
+  // Event listener for when 
+  //the WebSocket connection is opened
+  socket.onopen = function (event) {
+      // Alert the user that they are 
+      // connected to the WebSocket server
+      alert('You are Connected to WebSocket Server');
+  };
+
+  // Event listener for when a message
+  //  is received from the server
+  socket.onmessage = function (event) {
+    console.log("event ", event.data);
+    const data = JSON.parse(event.data);
+    switch (data.type) {
+      case 'show-time':
+        const outputDiv = document.getElementById('output');
+        outputDiv.innerHTML += `<p>Received <b>"${data.time}"</b> from server.</p>`;
+        break;
+    }
+  };
+
+  // Event listener for when the 
+  // WebSocket connection is closed
+  socket.onclose = function (event) {
+      // Log a message when disconnected
+      //  from the WebSocket server
+      console.log('Disconnected from WebSocket server');
+  };
+
+  // Function to send a message
+  //  to the WebSocket server
+  function sendMessage() {
+      // Get the message input element
+      const messageInput = document
+          .getElementById('messageInput');
+      // Get the value of
+      // the message input
+      const message = messageInput.value;
+      // Send the message to 
+      // the WebSocket server
+      socket.send(message);
+      // Clear the message input
+      messageInput.value = '';
+  }
+</script>
 </body>
 
 </html>
